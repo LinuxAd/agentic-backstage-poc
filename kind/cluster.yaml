@@ -1,0 +1,20 @@
+# kind cluster for the SRE Second Brain POC.
+# Single control-plane node; the cluster name is supplied by the Makefile
+# (CLUSTER_NAME) via `kind create --name`, so it is intentionally not set here.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    # Pinned for reproducible cold rebuilds. Matches kind v0.32.0's default node image.
+    image: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+    extraPortMappings:
+      # Backstage — reach the containerized app at http://localhost:7007
+      # (expects a NodePort Service on 30007, added in a later slice).
+      - containerPort: 30007
+        hostPort: 7007
+        protocol: TCP
+      # Postgres — lets the locally-run MCP server and psql hit localhost:5432
+      # (expects a NodePort Service on 30432, added in a later slice).
+      - containerPort: 30432
+        hostPort: 5432
+        protocol: TCP
