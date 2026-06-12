@@ -1,0 +1,30 @@
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-user
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: guest
+spec:
+  memberOf: [guests]
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-group
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: guests
+spec:
+  type: team
+  children: []
+---
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: LinuxAd
+spec:
+  profile:
+    displayName: Adam Wilson
+    email: adam@atestcloud.co.uk
+    picture: https://avatars.githubusercontent.com/u/15031318?v=4
+  memberOf:
+    - guests
