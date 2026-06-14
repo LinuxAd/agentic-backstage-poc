@@ -1,0 +1,47 @@
+replicaCount: 1
+
+image:
+  repository: backstage
+  tag: latest
+  # IfNotPresent so the cluster uses the `kind load`-ed image instead of pulling
+  # from a registry (a :latest tag would otherwise default to Always).
+  pullPolicy: IfNotPresent
+
+service:
+  port: 7007
+
+ingress:
+  className: nginx
+
+auth:
+  github:
+    # When enabled, AUTH_GITHUB_CLIENT_ID/SECRET are sourced from the named
+    # Secret (create it with `make backstage-secret` from backstage/.env).
+    # When disabled, dummy values are injected so the baked github provider's
+    # config substitution succeeds and guest login is used instead.
+    enabled: true
+    secretName: backstage-github-auth
+
+# Runtime app-config override, layered on top of the image's baked
+# app-config.yaml + app-config.production.yaml. Overrides only:
+#   - database: SQLite in-memory (no Postgres dependency yet; catalog rebuilds
+#     from the baked examples on each start)
+#   - baseUrls: single origin at http://localhost:3000 (served via ingress)
+# The production config already provides guest auth and the ./examples catalog.
+appConfig: |
+  app:
+    baseUrl: http://localhost:3000
+  backend:
+    baseUrl: http://localhost:3000
+    listen:
+      host: 0.0.0.0
+      port: 7007
+    database:
+      client: better-sqlite3
+      connection: ':memory:'
+  auth:
+    providers:
+      guest:
+        # The image runs with NODE_ENV=production, where the guest provider is
+        # disabled by default. This flag re-enables guest sign-in for the local demo.
+        dangerouslyAllowOutsideDevelopment: true

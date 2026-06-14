@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: backstage
+spec:
+  type: ClusterIP
+  selector:
+    app: backstage
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: 7007
+      protocol: TCP

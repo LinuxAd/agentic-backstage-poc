@@ -7,13 +7,23 @@ nodes:
   - role: control-plane
     # Pinned for reproducible cold rebuilds. Matches kind v0.32.0's default node image.
     image: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+    # Label the node so the ingress-nginx kind manifest schedules its controller here.
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
     extraPortMappings:
-      # Backstage — reach the containerized app at http://localhost:7007
-      # (expects a NodePort Service on 30007, added in a later slice).
+      # ingress-nginx HTTP — serves the Backstage frontend at http://localhost:3000.
+      - containerPort: 80
+        hostPort: 3000
+        protocol: TCP
+      # Backstage NodePort (direct, optional) — http://localhost:7007.
       - containerPort: 30007
         hostPort: 7007
         protocol: TCP
-      # Postgres — lets the locally-run MCP server and psql hit localhost:5432
+      # Postgres — lets a locally-run MCP server and psql hit localhost:5432
       # (expects a NodePort Service on 30432, added in a later slice).
       - containerPort: 30432
         hostPort: 5432

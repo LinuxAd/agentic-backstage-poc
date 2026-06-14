@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: backstage
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+      annotations:
+        # Roll the pod when the override config changes.
+        checksum/config: {{ .Values.appConfig | sha256sum }}
+    spec:
+      containers:
+        - name: backstage
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "packages/backend"]
+          args:
+            - "--config"
+            - "app-config.yaml"
+            - "--config"
+            - "app-config.production.yaml"
+            - "--config"
+            - "/app/config/app-config.kind.yaml"
+          env:
+{{- if .Values.auth.github.enabled }}
+            # Real GitHub OAuth credentials, sourced from a Secret created out of
+            # band (`make backstage-secret`) so they are never committed.
+            - name: AUTH_GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.github.secretName }}
+                  key: AUTH_GITHUB_CLIENT_ID
+            - name: AUTH_GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.github.secretName }}
+                  key: AUTH_GITHUB_CLIENT_SECRET
+{{- else }}
+            # Dummy values: satisfy the baked github provider's config
+            # substitution without real secrets; guest login is used instead.
+            - name: AUTH_GITHUB_CLIENT_ID
+              value: "unused"
+            - name: AUTH_GITHUB_CLIENT_SECRET
+              value: "unused"
+{{- end }}
+          ports:
+            - name: http
+              containerPort: 7007
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/config
+          readinessProbe:
+            tcpSocket:
+              port: 7007
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 7007
+            initialDelaySeconds: 45
+            periodSeconds: 10
+      volumes:
+        - name: app-config
+          configMap:
+            name: backstage-app-config

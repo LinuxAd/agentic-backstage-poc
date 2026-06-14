@@ -1,0 +1,6 @@
+apiVersion: v2
+name: backstage
+description: Backstage (containerized source app) for the SRE Second Brain POC, served via ingress-nginx on http://localhost:3000
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
