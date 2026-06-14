@@ -1,0 +1,248 @@
+# Dummy backend services for the examples catalog — a mix of Python and Go.
+# All owned by `guests` and part of the `examples` system. Synthetic data.
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: user-profile-service
+  description: Stores and serves user profile data (Python/FastAPI).
+  tags: [python, fastapi, backend]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: payment-gateway
+  description: Processes card payments and refunds (Python).
+  tags: [python, backend, payments]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: notification-dispatcher
+  description: Fans out push and SMS notifications (Python).
+  tags: [python, backend, messaging]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: recommendation-engine
+  description: Generates product recommendations (Python).
+  tags: [python, backend, ml]
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: fraud-detection-service
+  description: Scores transactions for fraud risk (Python).
+  tags: [python, backend, ml]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+  dependsOn: [component:payment-gateway]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: inventory-tracker
+  description: Tracks stock levels across warehouses (Python).
+  tags: [python, backend, inventory]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: email-worker
+  description: Background worker that renders and sends email (Python/Celery).
+  tags: [python, backend, worker]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+  dependsOn: [component:notification-dispatcher]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: analytics-aggregator
+  description: Rolls up event analytics into daily summaries (Python).
+  tags: [python, backend, analytics]
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: search-indexer
+  description: Builds and refreshes the product search index (Python).
+  tags: [python, backend, search]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: image-processing-service
+  description: Resizes and optimises uploaded images (Python).
+  tags: [python, backend, media]
+spec:
+  type: service
+  lifecycle: deprecated
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: auth-service
+  description: Issues and validates auth tokens (Go).
+  tags: [go, backend, auth]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: api-gateway
+  description: Edge gateway routing traffic to backend services (Go).
+  tags: [go, backend, gateway]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+  dependsOn: [component:auth-service, component:rate-limiter]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: order-service
+  description: Manages the order lifecycle (Go).
+  tags: [go, backend, orders]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+  dependsOn: [component:payment-gateway, component:inventory-tracker]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: shipping-service
+  description: Calculates rates and books shipments (Go).
+  tags: [go, backend, logistics]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+  dependsOn: [component:order-service]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: catalog-service
+  description: Serves the product catalog (Go).
+  tags: [go, backend, catalog]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: rate-limiter
+  description: Shared token-bucket rate limiting (Go).
+  tags: [go, backend, infra]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: session-manager
+  description: Tracks active user sessions (Go).
+  tags: [go, backend, auth]
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
+  dependsOn: [component:auth-service]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: event-bus
+  description: Internal pub/sub event broker (Go).
+  tags: [go, backend, messaging]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: metrics-collector
+  description: Scrapes and forwards service metrics (Go).
+  tags: [go, backend, observability]
+spec:
+  type: service
+  lifecycle: production
+  owner: guests
+  system: examples
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: config-service
+  description: Centralised dynamic configuration (Go).
+  tags: [go, backend, infra]
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
