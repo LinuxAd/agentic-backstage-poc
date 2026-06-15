@@ -10,7 +10,7 @@ The one-line architecture: *the Backstage catalog is the spine — every operati
 
 ### Build state vs. spec
 
-The spec describes the full system, but only part is built. **Currently implemented:** the kind cluster foundation (`kind/`, `deploy/namespaces.yaml`), the Backstage source app (`backstage/`), and a Helm chart deploying it via ingress (`charts/backstage/`, Makefile `backstage-*` targets). **Not yet built:** Postgres "brain store" (`brain/schema.sql`), the synthetic-event seeder (`seed.py`), the MCP server, and the `make seed` / `make demo` targets. The four namespaces and the port mappings (5432 for Postgres) are pre-wired for those components to land into.
+The spec describes the full system, but only part is built. **Currently implemented:** the kind cluster foundation (`kind/`, `deploy/namespaces.yaml`), the Backstage source app (`backstage/`), a Helm chart deploying it via ingress (`charts/backstage/`, Makefile `backstage-*` targets), and SonarQube Community Build deployed from the upstream chart via `deploy/sonarqube-values.yaml` (Makefile `sonarqube-*` targets), served at `http://sonarqube.localhost:3000`. **Not yet built:** Postgres "brain store" (`brain/schema.sql`), the synthetic-event seeder (`seed.py`), the MCP server, and the `make seed` / `make demo` targets. The four namespaces and the port mappings (5432 for Postgres) are pre-wired for those components to land into.
 
 Note one deviation from the spec already taken: spec constraint #3 said "no custom Backstage image." The repo instead **containerizes the local Backstage source app** and loads it into kind with `kind load docker-image` (no registry). This is intentional — see `docs/superpowers/specs/2026-06-12-kind-cluster-bringup-design.md`.
 
@@ -34,6 +34,8 @@ make ingress-install # install ingress-nginx (kind provider) and wait for readin
 make backstage-up    # build → load → deploy Backstage end-to-end
 make status          # show cluster, nodes, namespaces
 make down            # delete the kind cluster
+make sonarqube-up    # deploy SonarQube Community Build (upstream chart) into the apps ns
+make sonarqube-down  # uninstall SonarQube
 make nuke            # down + prune dangling images for a cold rebuild
 ```
 
@@ -62,7 +64,7 @@ yarn test:e2e         # Playwright e2e
 
 - **App-config layering** is the fiddliest part (called out in the spec's risk register). The image bakes `app-config.yaml` + `app-config.production.yaml`; the chart mounts a third overlay (`app-config.kind.yaml`) from a ConfigMap at `/app/config/`, and the deployment's container command passes all three via repeated `--config` flags. The ConfigMap content comes from `appConfig:` in `charts/backstage/values.yaml`. The deployment annotates the pod with a `sha256sum` of that config so changing it rolls the pod. **Currently the kind overlay sets the database to in-memory SQLite** — the catalog rebuilds from the baked `./examples` on every start; there is no Postgres dependency yet.
 
-- **Networking:** ingress-nginx is the entry point on `http://localhost:3000` (kind maps host 3000 → container 80). The ingress is a host-less catch-all so any Host header matches. Backstage's `app.baseUrl` and `backend.baseUrl` are both set to `http://localhost:3000` (single origin). 7007 (Backstage NodePort) and 5432 (future Postgres) are also mapped but optional/unused until their Services exist.
+- **Networking:** ingress-nginx is the entry point on `http://localhost:3000` (kind maps host 3000 → container 80). The ingress is a host-less catch-all so any Host header matches. Backstage's `app.baseUrl` and `backend.baseUrl` are both set to `http://localhost:3000` (single origin). 7007 (Backstage NodePort) and 5432 (future Postgres) are also mapped but optional/unused until their Services exist. SonarQube is reached at `http://sonarqube.localhost:3000`: its ingress rule is scoped to the `sonarqube.localhost` host, which is more specific than Backstage's host-less catch-all and so wins for that host only. `*.localhost` resolves to loopback, so no `/etc/hosts` edit is required.
 
 ## Conventions
 
