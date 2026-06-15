@@ -8,10 +8,13 @@ KUBECONTEXT  := kind-$(CLUSTER_NAME)
 
 BACKSTAGE_DIR ?= backstage
 
+DATA_NS    ?= data
+SCHEMA_SQL ?= brain/schema.sql
+
 INGRESS_NGINX_URL ?= https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up
+.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init
 
 host-build: ## Build the Backstage backend bundle on the host (yarn install/tsc/build)
 	@pushd $(BACKSTAGE_DIR) && \
@@ -56,6 +59,18 @@ backstage-deploy: backstage-secret ## Deploy Backstage via Helm and wait for rol
 	@echo "✓ backstage deployed → http://localhost:3000"
 
 backstage-up: backstage-build backstage-load backstage-deploy ## Build, load and deploy Backstage end-to-end
+
+db-up: ## Deploy the brain-store Postgres and wait for it to be Ready
+	@echo "→ deploying brain-store postgres into '$(DATA_NS)'"
+	@kubectl --context "$(KUBECONTEXT)" apply -f deploy/postgres/postgres.yaml
+	@kubectl --context "$(KUBECONTEXT)" -n "$(DATA_NS)" rollout status deploy/postgres --timeout=120s
+	@echo "✓ postgres ready → localhost:5432 (db/user/pass: brain)"
+
+db-init: ## Apply brain/schema.sql into the running postgres (idempotent)
+	@echo "→ applying schema"
+	@kubectl --context "$(KUBECONTEXT)" -n "$(DATA_NS)" exec -i deploy/postgres -- \
+		env PGPASSWORD=brain psql -U brain -d brain -v ON_ERROR_STOP=1 -f - < "$(SCHEMA_SQL)"
+	@echo "✓ schema applied (events, dossiers)"
 
 help: ## List available targets
 	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
