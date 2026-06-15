@@ -1,6 +1,7 @@
-# SRE Second Brain — local kind cluster bring-up.
-# Foundation slice: cluster lifecycle + namespaces. Postgres, Backstage,
-# seeder and the MCP server land in later slices.
+# SRE Second Brain — local kind cluster bring-up + demo orchestration.
+# `make demo` cold-starts the whole stack: kind cluster, ingress, Backstage,
+# the Postgres brain store + schema, the synthetic seeder, and registers the
+# MCP server with Claude Code.
 
 CLUSTER_NAME ?= sre-second-brain
 KIND_CONFIG  ?= kind/cluster.yaml
@@ -15,7 +16,7 @@ SEEDER_DIR ?= brain/seeder
 INGRESS_NGINX_URL ?= https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init seed mcp-register
+.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init seed mcp-register demo
 
 host-build: ## Build the Backstage backend bundle on the host (yarn install/tsc/build)
 	@pushd $(BACKSTAGE_DIR) && \
@@ -77,9 +78,29 @@ seed: ## Generate synthetic events into the brain store (deterministic, idempote
 	@echo "→ seeding brain store"
 	@uv run "$(SEEDER_DIR)/seed.py"
 
-mcp-register: ## Register the second-brain MCP server with Claude Code
+mcp-register: ## Register (idempotently) the second-brain MCP server with Claude Code
+	@claude mcp remove second-brain >/dev/null 2>&1 || true
 	@claude mcp add second-brain -- uv run --quiet "$(CURDIR)/brain/mcp_server/server.py"
 	@echo "✓ registered 'second-brain' — restart the Claude Code session to load its tools"
+
+demo: up ingress-install db-up db-init seed backstage-up mcp-register ## Cold-start the entire stack and print the demo script
+	@echo ""
+	@echo "════════════════════════════════════════════════════════════════"
+	@echo "  SRE Second Brain — demo ready"
+	@echo "════════════════════════════════════════════════════════════════"
+	@echo "  Backstage catalog : http://localhost:3000  (guest sign-in)"
+	@echo "  Brain store       : postgresql://brain:brain@localhost:5432/brain"
+	@echo "  MCP server        : 'second-brain' (registered with Claude Code)"
+	@echo ""
+	@echo "  Start a NEW Claude Code session in this repo, then ask:"
+	@echo "    1. What services exist on this platform and who owns them?"
+	@echo "    2. What's going on with payment-gateway right now?"
+	@echo "    3. Could the open incident be related to a recent change?"
+	@echo "    4. Which service's code quality is trending the wrong way?"
+	@echo ""
+	@echo "  Closer: open Backstage and show payment-gateway in the catalog —"
+	@echo "  the same entity ref the agent keyed every signal to."
+	@echo "════════════════════════════════════════════════════════════════"
 
 help: ## List available targets
 	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -88,6 +109,8 @@ preflight: ## Verify kind, kubectl, docker are installed and the daemon is up
 	@command -v kind    >/dev/null || { echo "✗ kind not found on PATH";    exit 1; }
 	@command -v kubectl >/dev/null || { echo "✗ kubectl not found on PATH"; exit 1; }
 	@command -v docker  >/dev/null || { echo "✗ docker not found on PATH";  exit 1; }
+	@command -v helm    >/dev/null || { echo "✗ helm not found on PATH";    exit 1; }
+	@command -v uv      >/dev/null || { echo "✗ uv not found on PATH (needed by seed/mcp; brew install uv)"; exit 1; }
 	@docker info >/dev/null 2>&1   || { echo "✗ Docker daemon not reachable — start Docker/Colima"; exit 1; }
 	@echo "✓ preflight ok"
 
