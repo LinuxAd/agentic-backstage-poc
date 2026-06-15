@@ -124,10 +124,85 @@ def protagonist_events():
     return ev
 
 
+INCIDENT_TITLES = [
+    "elevated 5xx after rollout",
+    "slow query on read replica",
+    "memory pressure: pod OOMKilled",
+    "cache stampede on cold start",
+    "upstream dependency timeout",
+]
+ALERT_CHOICES = [
+    ("HighErrorRate", "critical"),
+    ("HighLatencyP99", "warning"),
+    ("PodRestarts", "warning"),
+]
+
+
+def background_events(ref):
+    short = ref.split("/")[-1]
+    ev = []
+
+    # 1-3 resolved incidents over the last ~month.
+    for _ in range(RNG.randint(1, 3)):
+        start = days(RNG.randint(3, 29)) - timedelta(hours=RNG.randint(0, 12))
+        ev.append((ref, "pagerduty", "incident", RNG.choice(["sev3", "sev4"]), {
+            "title": RNG.choice(INCIDENT_TITLES),
+            "status": "resolved",
+            "started_at": start.isoformat(),
+            "resolved_at": (start + timedelta(hours=RNG.randint(1, 6))).isoformat(),
+            "service": short,
+            "url": f"https://pd.example/incidents/PD-{RNG.randint(1000, 1999)}",
+        }, start))
+
+    # 1-4 resolved alerts (none firing now).
+    for _ in range(RNG.randint(1, 4)):
+        start = days(RNG.randint(2, 29))
+        name, sev = RNG.choice(ALERT_CHOICES)
+        ev.append((ref, "prometheus", "alert", sev, {
+            "alertname": name,
+            "expr": "<synthetic alert expression>",
+            "value": round(RNG.uniform(0.05, 0.2), 3),
+            "threshold": 0.05,
+            "state": "resolved",
+            "started_at": start.isoformat(),
+            "resolved_at": (start + timedelta(hours=RNG.randint(1, 5))).isoformat(),
+        }, start))
+
+    # Weekly SonarQube scans: stable coverage, gate OK.
+    base = RNG.uniform(78, 86)
+    for i in range(5):
+        cov = round(base + RNG.uniform(-1.5, 1.5), 1)
+        ev.append((ref, "sonarqube", "scan", None, {
+            "coverage": cov,
+            "code_smells": RNG.randint(30, 90),
+            "bugs": RNG.randint(0, 4),
+            "vulnerabilities": RNG.randint(0, 2),
+            "quality_gate": "OK",
+            "project_key": short,
+        }, days(28 - i * 7)))
+
+    # 1-4 successful deploys per week over 4 weeks.
+    for week in range(4):
+        for _ in range(RNG.randint(1, 4)):
+            when = days(RNG.randint(week * 7, week * 7 + 6)) - timedelta(hours=RNG.randint(0, 18))
+            ev.append((ref, "argocd", "deploy", None, {
+                "revision": f"v1.{RNG.randint(0, 9)}.{RNG.randint(0, 9)}",
+                "image_tag": f"1.{RNG.randint(0, 9)}.{RNG.randint(0, 9)}",
+                "status": "Succeeded",
+                "sync_status": "Synced",
+                "author": "platform-bot",
+                "url": f"https://argo.example/applications/{short}",
+            }, when))
+
+    return ev
+
+
 def build_events():
     """Return the full list of event tuples."""
     events = []
     events += protagonist_events()
+    for ref in BACKGROUND:
+        events += background_events(ref)
     return events
 
 
