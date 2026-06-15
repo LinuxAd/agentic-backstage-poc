@@ -39,6 +39,10 @@ appConfig: |
     database:
       client: better-sqlite3
       connection: ':memory:'
+    auth:
+      # Demo-only: the new Backstage backend 401s unauthenticated requests by
+      # default; this lets the local MCP server read the catalog API.
+      dangerouslyDisableDefaultAuthPolicy: true
   auth:
     providers:
       guest:
