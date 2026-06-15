@@ -15,7 +15,7 @@ SEEDER_DIR ?= brain/seeder
 INGRESS_NGINX_URL ?= https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init seed
+.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init seed mcp-register
 
 host-build: ## Build the Backstage backend bundle on the host (yarn install/tsc/build)
 	@pushd $(BACKSTAGE_DIR) && \
@@ -76,6 +76,10 @@ db-init: ## Apply brain/schema.sql into the running postgres (idempotent)
 seed: ## Generate synthetic events into the brain store (deterministic, idempotent)
 	@echo "→ seeding brain store"
 	@uv run "$(SEEDER_DIR)/seed.py"
+
+mcp-register: ## Register the second-brain MCP server with Claude Code
+	@claude mcp add second-brain -- uv run --quiet "$(CURDIR)/brain/mcp_server/server.py"
+	@echo "✓ registered 'second-brain' — restart the Claude Code session to load its tools"
 
 help: ## List available targets
 	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
