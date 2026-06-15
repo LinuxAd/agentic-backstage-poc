@@ -4,7 +4,7 @@
 
 **Goal:** Deploy SonarQube Community Build into the existing kind cluster and serve it through ingress-nginx at `http://sonarqube.localhost:3000`, alongside Backstage.
 
-**Architecture:** Use the upstream SonarSource Helm chart (`sonarqube/sonarqube`, pinned to chart `2026.4.0`) driven by a repo-local values override (`deploy/sonarqube-values.yaml`) and new idempotent `make sonarqube-*` targets — mirroring how `make backstage-*` orchestrates Helm. SonarQube runs in the existing `apps` namespace with the embedded **H2** database and **ephemeral** storage (no Postgres dependency; data is lost on pod restart — acceptable for the POC). Ingress is **host-based**: a rule scoped to `sonarqube.localhost` wins over Backstage's host-less catch-all, so `localhost:3000` stays Backstage and `sonarqube.localhost:3000` reaches SonarQube. `*.localhost` resolves to loopback on macOS/modern browsers, so no `/etc/hosts` edit is needed.
+**Architecture:** Use the upstream SonarSource Helm chart (`sonarqube/sonarqube`, pinned to chart `2026.3.1`) driven by a repo-local values override (`deploy/sonarqube-values.yaml`) and new idempotent `make sonarqube-*` targets — mirroring how `make backstage-*` orchestrates Helm. SonarQube runs in the existing `apps` namespace with the embedded **H2** database and **ephemeral** storage (no Postgres dependency; data is lost on pod restart — acceptable for the POC). Ingress is **host-based**: a rule scoped to `sonarqube.localhost` wins over Backstage's host-less catch-all, so `localhost:3000` stays Backstage and `sonarqube.localhost:3000` reaches SonarQube. `*.localhost` resolves to loopback on macOS/modern browsers, so no `/etc/hosts` edit is needed.
 
 **Tech Stack:** kind, Helm 3, ingress-nginx, SonarSource SonarQube Helm chart, SonarQube Community Build (Elasticsearch + web, Java).
 
@@ -84,7 +84,7 @@ at `http://sonarqube.localhost:3000`, without disturbing Backstage on
 - `deploy/sonarqube-values.yaml` — Helm values override.
 - `make sonarqube-up` / `make sonarqube-down` — lifecycle targets.
 - Namespace: existing `apps`.
-- Chart: `sonarqube/sonarqube` pinned to `2026.4.0`.
+- Chart: `sonarqube/sonarqube` pinned to `2026.3.1`.
 
 ## Verification
 
@@ -122,7 +122,7 @@ Create `deploy/sonarqube-values.yaml` with exactly this content:
 
 ```yaml
 # Helm values override for the upstream sonarqube/sonarqube chart (pinned to
-# chart 2026.4.0). Applied by `make sonarqube-up`. Intentionally minimal — all
+# chart 2026.3.1). Applied by `make sonarqube-up`. Intentionally minimal — all
 # local intent lives here so the upstream chart stays untouched.
 
 # Use the Community Build image (free edition). The chart derives the
@@ -205,7 +205,7 @@ In `Makefile`, after the `BACKSTAGE_DIR ?= backstage` line (currently `Makefile:
 SONARQUBE_NS         ?= apps
 SONARQUBE_VALUES     ?= deploy/sonarqube-values.yaml
 SONARQUBE_CHART_REPO ?= https://SonarSource.github.io/helm-chart-sonarqube
-SONARQUBE_CHART_VER  ?= 2026.4.0
+SONARQUBE_CHART_VER  ?= 2026.3.1
 ```
 
 - [ ] **Step 2: Extend the `.PHONY` list**
@@ -350,5 +350,5 @@ Expected: `✓ sonarqube removed` and no `sonarqube-*` resources remain. (Skip i
 
 - **Spec coverage:** "Add SonarQube" → Tasks 2–3 + 5; "community build" → `community.enabled: true` (Task 2); "wire to kind ingress" → host-based ingress in values (Task 2) verified in Task 5 steps 3–4. ✓
 - **Placeholders:** none — every value, command, and expected output is concrete. The only deliberately arbitrary string is `monitoringPasscode`, explained inline. ✓
-- **Consistency:** namespace `apps`, release name `sonarqube`, chart `sonarqube/sonarqube@2026.4.0`, host `sonarqube.localhost`, pod selector `app=sonarqube`, and context `kind-sre-second-brain` are used identically across the values file, Makefile targets, and verification. ✓
+- **Consistency:** namespace `apps`, release name `sonarqube`, chart `sonarqube/sonarqube@2026.3.1`, host `sonarqube.localhost`, pod selector `app=sonarqube`, and context `kind-sre-second-brain` are used identically across the values file, Makefile targets, and verification. ✓
 ```

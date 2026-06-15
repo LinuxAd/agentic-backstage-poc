@@ -1,5 +1,5 @@
 # Helm values override for the upstream sonarqube/sonarqube chart (pinned to
-# chart 2026.4.0). Applied by `make sonarqube-up`. Intentionally minimal — all
+# chart 2026.3.1). Applied by `make sonarqube-up`. Intentionally minimal — all
 # local intent lives here so the upstream chart stays untouched.
 
 # Use the Community Build image (free edition). The chart derives the

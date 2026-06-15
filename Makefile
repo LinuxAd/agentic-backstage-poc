@@ -11,7 +11,7 @@ BACKSTAGE_DIR ?= backstage
 SONARQUBE_NS         ?= apps
 SONARQUBE_VALUES     ?= deploy/sonarqube-values.yaml
 SONARQUBE_CHART_REPO ?= https://SonarSource.github.io/helm-chart-sonarqube
-SONARQUBE_CHART_VER  ?= 2026.4.0
+SONARQUBE_CHART_VER  ?= 2026.3.1
 
 INGRESS_NGINX_URL ?= https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 

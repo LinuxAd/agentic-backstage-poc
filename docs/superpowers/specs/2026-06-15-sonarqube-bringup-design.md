@@ -35,7 +35,8 @@ at `http://sonarqube.localhost:3000`, without disturbing Backstage on
 - `deploy/sonarqube-values.yaml` — Helm values override.
 - `make sonarqube-up` / `make sonarqube-down` — lifecycle targets.
 - Namespace: existing `apps`.
-- Chart: `sonarqube/sonarqube` pinned to `2026.4.0`.
+- Chart: `sonarqube/sonarqube` pinned to `2026.3.1` (latest published; renders
+  the `sonarqube:*-community` Community Build image).
 
 ## Verification
 
