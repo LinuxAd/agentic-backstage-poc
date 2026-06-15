@@ -8,10 +8,15 @@ KUBECONTEXT  := kind-$(CLUSTER_NAME)
 
 BACKSTAGE_DIR ?= backstage
 
+SONARQUBE_NS         ?= apps
+SONARQUBE_VALUES     ?= deploy/sonarqube-values.yaml
+SONARQUBE_CHART_REPO ?= https://SonarSource.github.io/helm-chart-sonarqube
+SONARQUBE_CHART_VER  ?= 2026.4.0
+
 INGRESS_NGINX_URL ?= https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up
+.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up sonarqube-up sonarqube-down
 
 host-build: ## Build the Backstage backend bundle on the host (yarn install/tsc/build)
 	@pushd $(BACKSTAGE_DIR) && \
@@ -56,6 +61,25 @@ backstage-deploy: backstage-secret ## Deploy Backstage via Helm and wait for rol
 	@echo "✓ backstage deployed → http://localhost:3000"
 
 backstage-up: backstage-build backstage-load backstage-deploy ## Build, load and deploy Backstage end-to-end
+
+sonarqube-up: ## Deploy SonarQube Community Build via Helm and wait for it to be Ready
+	@echo "→ adding/updating SonarSource helm repo"
+	@helm repo add sonarqube "$(SONARQUBE_CHART_REPO)" >/dev/null 2>&1 || true
+	@helm repo update sonarqube >/dev/null
+	@echo "→ deploying SonarQube (chart $(SONARQUBE_CHART_VER)) into '$(SONARQUBE_NS)'"
+	@helm --kube-context "$(KUBECONTEXT)" upgrade --install sonarqube sonarqube/sonarqube \
+		--version "$(SONARQUBE_CHART_VER)" \
+		--namespace "$(SONARQUBE_NS)" --create-namespace \
+		-f "$(SONARQUBE_VALUES)"
+	@echo "→ waiting for SonarQube to start (Elasticsearch + web; up to 10m)"
+	@kubectl --context "$(KUBECONTEXT)" -n "$(SONARQUBE_NS)" wait \
+		--for=condition=Ready pod \
+		--selector=app=sonarqube --timeout=600s
+	@echo "✓ sonarqube deployed → http://sonarqube.localhost:3000 (login admin/admin)"
+
+sonarqube-down: ## Uninstall the SonarQube Helm release
+	@helm --kube-context "$(KUBECONTEXT)" uninstall sonarqube --namespace "$(SONARQUBE_NS)" || true
+	@echo "✓ sonarqube removed"
 
 help: ## List available targets
 	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
