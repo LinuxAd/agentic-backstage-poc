@@ -1,0 +1,70 @@
+# Brain-store Postgres for the SRE Second Brain POC.
+# Plain postgres:16 in the `data` namespace, exposed on NodePort 30432
+# (mapped to host 5432 by kind/cluster.yaml). Ephemeral (emptyDir): the store is
+# rebuilt by `make db-init && make seed`. Demo-only credentials (synthetic data only).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: data
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              value: brain
+            - name: POSTGRES_USER
+              value: brain
+            - name: POSTGRES_PASSWORD
+              value: brain
+            # Keep PGDATA in a subdir of the mount so initdb owns a clean dir.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "brain", "-d", "brain"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: data
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      nodePort: 30432
