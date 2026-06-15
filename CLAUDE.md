@@ -40,7 +40,14 @@ make nuke            # down + prune dangling images for a cold rebuild
 ```
 
 Cold-start sequence for a working Backstage on `http://localhost:3000`:
-`make up && make ingress-install && make backstage-up`.
+`make up && make ingress-install && make backstage-up`. Add `make sonarqube-up` to
+also bring up SonarQube at `http://sonarqube.localhost:3000`.
+
+**Memory:** SonarQube (Elasticsearch + web) requests 2 GiB and needs ~2–3 GiB to run.
+The Docker/Colima VM backing kind must have **≥ ~6 GiB** allocated — with less, the
+`sonarqube-sonarqube-0` pod stays `Pending` with `Insufficient memory` (Docker Desktop:
+Settings → Resources → Memory; Colima: `colima start --memory 6`). Backstage alone is
+fine on the default ~2 GiB.
 
 GitHub OAuth (optional): `make backstage-secret` reads `backstage/.env` (gitignored; expects `AUTH_GITHUB_CLIENT_ID` / `AUTH_GITHUB_CLIENT_SECRET`) into the `backstage-github-auth` Secret. With `auth.github.enabled: false` in chart values, dummy values are injected and guest login is used instead.
 
