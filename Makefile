@@ -13,10 +13,15 @@ DATA_NS    ?= data
 SCHEMA_SQL ?= brain/schema.sql
 SEEDER_DIR ?= brain/seeder
 
+# Brain-store connection (demo-only creds; matches deploy/postgres/postgres.yaml).
+# From a container, the kind-mapped host port 5432 is reached via host.docker.internal.
+PG_IMAGE ?= postgres:16
+PG_URL   ?= postgresql://brain:brain@host.docker.internal:5432/brain
+
 INGRESS_NGINX_URL ?= https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init seed mcp-register demo
+.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init seed psql mcp-register demo
 
 host-build: ## Build the Backstage backend bundle on the host (yarn install/tsc/build)
 	@pushd $(BACKSTAGE_DIR) && \
@@ -39,8 +44,7 @@ ingress-install: ## Install ingress-nginx (kind provider) and wait for it to be 
 	@kubectl --context "$(KUBECONTEXT)" apply -f "$(INGRESS_NGINX_URL)"
 	@echo "→ waiting for ingress-nginx controller"
 	@kubectl --context "$(KUBECONTEXT)" wait --namespace ingress-nginx \
-		--for=condition=Ready pod \
-		--selector=app.kubernetes.io/component=controller --timeout=180s
+		--for=condition=Available deployment/ingress-nginx-controller --timeout=180s
 	@echo "✓ ingress-nginx ready"
 
 backstage-secret: ## Create/update the GitHub auth Secret from backstage/.env
@@ -77,6 +81,12 @@ db-init: ## Apply brain/schema.sql into the running postgres (idempotent)
 seed: ## Generate synthetic events into the brain store (deterministic, idempotent)
 	@echo "→ seeding brain store"
 	@uv run "$(SEEDER_DIR)/seed.py"
+
+psql: ## Open an interactive psql client (Docker) against the brain store
+	@echo "→ connecting to $(PG_URL)"
+	@docker run --rm -it \
+		--add-host=host.docker.internal:host-gateway \
+		$(PG_IMAGE) psql "$(PG_URL)"
 
 mcp-register: ## Register (idempotently) the second-brain MCP server with Claude Code
 	@claude mcp remove second-brain >/dev/null 2>&1 || true
