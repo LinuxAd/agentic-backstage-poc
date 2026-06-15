@@ -10,11 +10,12 @@ BACKSTAGE_DIR ?= backstage
 
 DATA_NS    ?= data
 SCHEMA_SQL ?= brain/schema.sql
+SEEDER_DIR ?= brain/seeder
 
 INGRESS_NGINX_URL ?= https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init
+.PHONY: help preflight up down nuke status host-build backstage-build backstage-load ingress-install backstage-secret backstage-deploy backstage-up db-up db-init seed
 
 host-build: ## Build the Backstage backend bundle on the host (yarn install/tsc/build)
 	@pushd $(BACKSTAGE_DIR) && \
@@ -71,6 +72,10 @@ db-init: ## Apply brain/schema.sql into the running postgres (idempotent)
 	@kubectl --context "$(KUBECONTEXT)" -n "$(DATA_NS)" exec -i deploy/postgres -- \
 		env PGPASSWORD=brain psql -U brain -d brain -v ON_ERROR_STOP=1 -f - < "$(SCHEMA_SQL)"
 	@echo "✓ schema applied (events, dossiers)"
+
+seed: ## Generate synthetic events into the brain store (deterministic, idempotent)
+	@echo "→ seeding brain store"
+	@uv run "$(SEEDER_DIR)/seed.py"
 
 help: ## List available targets
 	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
