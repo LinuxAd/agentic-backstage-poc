@@ -1,0 +1,52 @@
+# Helm values override for the upstream sonarqube/sonarqube chart (pinned to
+# chart 2026.4.0). Applied by `make sonarqube-up`. Intentionally minimal — all
+# local intent lives here so the upstream chart stays untouched.
+
+# Use the Community Build image (free edition). The chart derives the
+# `<buildNumber>-community` image tag from this and ignores commercial editions.
+community:
+  enabled: true
+
+# Embedded H2 database (no jdbcOverwrite => H2). For evaluation only: it does not
+# survive a pod restart and cannot be upgraded. The cluster's Postgres lands in a
+# later slice.
+jdbcOverwrite:
+  enabled: false
+
+# Ephemeral storage — emptyDir, no PVC. Pairs with the H2 decision above.
+persistence:
+  enabled: false
+
+# Required by the chart; arbitrary local value (only used by the /api/monitoring
+# Prometheus endpoint, which we do not expose).
+monitoringPasscode: "local-poc-passcode"
+
+# Elasticsearch on kind: avoid the privileged sysctl init container and host
+# vm.max_map_count tuning by telling ES not to use mmap directories.
+initSysctl:
+  enabled: false
+sonarProperties:
+  sonar.search.javaAdditionalOpts: "-Dnode.store.allow_mmap=false"
+
+# Host-based routing. A rule scoped to sonarqube.localhost is more specific than
+# Backstage's host-less catch-all, so it wins for this host only.
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - name: sonarqube.localhost
+      path: /
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # SonarQube report uploads can be large; lift nginx's default body cap.
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+
+# Trim the chart's heavy defaults (limit memory 6Gi, ephemeral-storage 512000M)
+# to something a local kind/Colima VM can schedule.
+resources:
+  requests:
+    cpu: 400m
+    memory: 2Gi
+  limits:
+    cpu: "1"
+    memory: 4Gi
